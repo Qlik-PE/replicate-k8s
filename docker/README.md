@@ -7,7 +7,7 @@ Qlik Replicate.
 > the Qlik Data Integration download area. The file name will be something like: 
 > *areplicate-2022.5.0-499_docker_file_generator.tar.gz*.
 
-In order to build a docker image, you will need to download the install bundle for Qlik
+In order to build a docker image, you will need to download the Linux install bundle for Qlik
 Replicate and extract it. For example:
 
 ```
@@ -86,5 +86,6 @@ Successfully tagged replicate:k8s
 
 > Note: The script *start-replicate.sh* is copied into and used by 
 > the docker image that is generated. It installs SSL certs and/or the Replicate 
-> license if they are provided, and starts the Qlik Replicate server.
-> provided at runtime
+> license if they are provided at runtime, and starts the Qlik Replicate server.
+> You should review this script for details: it looks in specific locations for the 
+> SSL certs and Qlik Replicate license.

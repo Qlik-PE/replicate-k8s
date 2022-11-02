@@ -18,7 +18,7 @@ CLI. *Kubectl* interacts with the Kubernetes cluster manager to deploy and manag
 
 ## Running the Demo
 
-Follow these steps to run the demo
+Follow these steps to run the demo.
 
 ### Start Minikube
 
@@ -30,7 +30,7 @@ minikube start --driver=docker
 
 ### Create a Qlik Replicate License 'Secret'
 
-If you want to provide a license file to you Qlik Replicate environment, you
+If you want to provide a license file to your Qlik Replicate environment, you
 can do so by creating a Kubernetes secret containing the details of your
 Qlik Replicate license. 
 
@@ -79,6 +79,7 @@ Access Qlik Replicate from your browser using the IP address and port
 listed in the output from *run-demo.sh*. The user name will be `admin`
 and the password will be `AttunityAdmin123` (unless you changed it in 
 the *replicate.yaml* file). Your URL should look something like this:
+
 ```text
 http://192.168.49.2:31020/attunityreplicate
 ```
@@ -150,4 +151,13 @@ minute.
 When you are done testing, you can execute the *cleanup-demo.sh* script.
 
 ![Cleanup](../images/cleanup-demo.png)
+
+And stop minikube:
+
+```
+minikube stop
+```
+
+![minikube stop](../images/minikube-stop.png)
+
 

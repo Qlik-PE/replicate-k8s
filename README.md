@@ -8,7 +8,7 @@ for you to experiment with.
 ## Qlik Replicate and Docker
 
 Qlik fully supports the deployment of Qlik Replicate in a Docker image. However, Qlik does not 
-maintain a publicly accessible repository where you can download an image. You will
+currently maintain a publicly accessible repository where you can download an image. You will
 need to provide your own.
 
 > Note: while Docker is fully supported by Qlik and Qlik Replicate can be deployed in
@@ -19,13 +19,14 @@ need to provide your own.
 
 An example *Dockerfile* and supporting scripts can be found in the `docker` subdirectory. You
 very likely will want to customize this for the specific requirements of your organization, 
-particularly with regard to the database drivers that you choose to install..
+particularly with regard to the database drivers that you choose to install.
 If you don't have one already, you will need to build a Qlik Replicate docker image to work with.
 
 ## Kubernetes Production Best Practices
 
 * Create Kubernetes secrets to hold SSL certs, Replicate password, and your Replicate license file.
-* The replication factor for your Replicate pod should be set to 1. Replicate does
+* Use a Kubernetes "deployment" for production.
+* The replication factor for your Replicate deployment should be set to 1. Replicate does
 not support sharing the data directory in active/active fashion across multiple instances
 of Replicate.
 * The Replicate "data directory" should be located on storage that can be shared with all
