@@ -1,0 +1,57 @@
+#
+# Create ConfigMap mysql-env for the mysql app
+# Data  values are exposed to the mysql container as 
+# environment variables.
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-env
+  labels:
+    app: mysqldb
+data:
+  MYSQL_ROOT_PASSWORD: attunity
+---
+#
+# Create a pod that runs MySQL. 
+#
+apiVersion: v1
+kind: Pod 
+metadata:
+  name: mysqldb 
+  labels:
+    app: mysqldb
+spec:
+  containers:
+    - name: mysqldb
+      image: mysql:5.6 
+      imagePullPolicy: "IfNotPresent"
+      ports:
+        - containerPort: 3306 
+      envFrom:
+        - configMapRef:
+            name: mysql-env # Using the ConfigMap mysql-env
+      volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: mysqldata
+      args: [ "--datadir=/var/lib/mysql", "--user=mysql", "--server-id=1", "--log-bin=mysql-bin.log", "--binlog-format=ROW", "--expire-logs-days=1", "--default-storage-engine=InnoDB"]
+  restartPolicy: Never
+  volumes:
+    - name: mysqldata
+      emptyDir: {}
+---
+#
+# Create the service that will be used to access MySQL
+#
+apiVersion: v1
+kind: Service 
+metadata:
+  name: mysqldb 
+  labels:
+    app: mysqldb 
+spec:
+  type: NodePort 
+  ports:
+    - port: 3306 # Sets the port to run the mysql application
+  selector:
+    app: mysqldb

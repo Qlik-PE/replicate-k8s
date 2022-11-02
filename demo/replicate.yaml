@@ -1,0 +1,74 @@
+#
+# Create ConfigMap replicate-env for the replicate app
+# Data  values are exposed to the replicate container as 
+# environment variables.
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: replicate-env
+  labels:
+    app: replhost
+data:
+  # for production, password obviously should be stored in a k8s secret
+  MYSQL_ROOT_PASSWORD: AttunityAdmin123 # must be >= 15 chars, upper, lower, number, no special
+---
+#
+# Create a pod for Qlik Replicate. 
+# For production, consider converting this to a kubernetes deployment.
+# NOTE: for a deployment, the replication factor should be 1. Replicate does
+# not support multiple instances sharing the same data directory.
+#
+apiVersion: v1
+kind: Pod 
+metadata:
+  name: replhost 
+  labels:
+    app: replhost
+spec:
+  containers:
+    - name: replhost
+      image: replicate:k8s 
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      stdin: true
+      ports:
+        - containerPort: 3552 
+      envFrom:
+        - configMapRef:
+            name: replicate-env # Using the ConfigMap replicate-env
+      volumeMounts:
+        - name: repldata
+          mountPath: /data
+        - name: repl-license
+          mountPath: /repl-license
+          readOnly: true
+      args: [ ]
+  restartPolicy: Never
+  # in real life, the data volume should at a minimum be persistent storage or you will
+  # lose your work when the pod exits. Ideally it would be on a shared disk (i.e. nfs, etc.)
+  # so that it can be accessed from whatever node replicate is deployed on.
+  volumes:
+    - name: repldata
+      emptyDir: {}
+    - name: repl-license
+      secret:
+        secretName: repl-license
+        optional: true
+---
+# 
+# Create the service used to access Qlik Replicate
+#
+apiVersion: v1
+kind: Service 
+metadata:
+  name: replhost 
+  labels:
+    app: replhost 
+spec:
+  type: NodePort 
+  ports:
+    - port: 3552 
+      targetPort: 3552
+  selector:
+    app: replhost
