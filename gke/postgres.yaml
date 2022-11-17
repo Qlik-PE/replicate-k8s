@@ -1,0 +1,61 @@
+#
+# Create ConfigMap postgres-env for the postgres app
+# Data  values are exposed to the postgres container as 
+# environment variables.
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-env
+  labels:
+    app: postgresdb
+data:
+  POSTGRES_DB: qlikdb
+  POSTGRES_USER: qlik
+  POSTGRES_PASSWORD: attunity
+  PGDATA: /var/lib/postgresql/data
+---
+#
+# Create a pod to run Postgres
+#
+apiVersion: v1
+kind: Pod # Create a pod
+metadata:
+  name: postgresdb # Set the name of the pod
+  labels:
+    app: postgresdb
+spec:
+  containers:
+    - name: postgresdb
+      image: postgres:13 
+      imagePullPolicy: "IfNotPresent"
+      ports:
+        - containerPort: 5432 
+      envFrom:
+        - configMapRef:
+            name: postgres-env # Using the ConfigMap postgres-env
+      volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgresdata
+      args: ["-c", "wal_level=logical", "-c", "max_replication_slots=3", "-c", "max_wal_senders=3", "-c",  "wal_sender_timeout=60s"]
+  restartPolicy: Never
+  volumes:
+    - name: postgresdata
+      emptyDir: {}
+---
+# 
+# Create the service that will be used to access Postgres.
+#
+apiVersion: v1
+kind: Service 
+metadata:
+  name: postgresdb 
+  labels:
+    app: postgresdb 
+spec:
+  type: ClusterIP 
+  ports:
+    - port: 5432 
+      targetPort: 5432
+  selector:
+    app: postgresdb

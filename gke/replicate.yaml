@@ -1,0 +1,99 @@
+#
+# Create ConfigMap replicate-env for the replicate app
+# Data  values are exposed to the replicate container as 
+# environment variables.
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: replicate-env
+  labels:
+    app: replhost
+data:
+  # for production, password obviously should be stored in a k8s secret
+  MYSQL_ROOT_PASSWORD: AttunityAdmin123 # must be >= 15 chars, upper, lower, number, no special
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: repldata
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
+  storageClassName: standard-rwo
+---
+#
+# Create a deployment for Qlik Replicate. 
+# NOTE: for a deployment, the replication factor should be 1. Replicate does
+# not support multiple instances sharing the same data directory.
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: replhost
+  labels:
+    app: replhost
+spec:
+  replicas: 1  # must be 1
+  selector:
+    matchLabels:
+      app: replhost
+  template: 
+    metadata:
+      name: replhost 
+      labels:
+        app: replhost
+    spec:
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: replhost
+          image: gcr.io/replicate-gke-demo/replicate:k8s
+          imagePullPolicy: "IfNotPresent"
+          tty: true
+          stdin: true
+          ports:
+            - containerPort: 3552 
+          envFrom:
+            - configMapRef:
+                name: replicate-env # Using the ConfigMap replicate-env
+          volumeMounts:
+            - name: repldata
+              mountPath: /data
+            - name: repl-license
+              mountPath: /repl-license
+              readOnly: true
+          args: [ ]
+      # The data volume should be persistent storage or you will
+      # lose your work when the pod exits. Ideally it would be on a shared disk 
+      # (i.e. cloud block storage, etc.)
+      # so that it can be accessed from whatever node replicate is deployed on.
+      volumes:
+        - name: repldata
+          persistentVolumeClaim:
+            claimName: repldata
+        - name: repl-license
+          secret:
+            secretName: repl-license
+            optional: true
+---
+# 
+# Create the service used to access Qlik Replicate
+#
+apiVersion: v1
+kind: Service 
+metadata:
+  name: replhost 
+  labels:
+    app: replhost 
+spec:
+  type: NodePort 
+  ports:
+    - port: 3552 
+      targetPort: 3552
+  selector:
+    app: replhost

@@ -64,5 +64,5 @@ EXPOSE 3550
 # successful start of Replicate. This has added benefit of providing a
 # tty we can connect to for troubleshooting. Caution: if you exit the
 # bash shell, the container will terminate.
-CMD /home/attunity/bin/start-replicate.sh && bash
+CMD /home/attunity/bin/start-replicate.sh && bash || bash
 

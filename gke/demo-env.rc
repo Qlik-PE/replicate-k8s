@@ -1,0 +1,10 @@
+#
+# environment variables for run-demo.sh and cleanup-demo.sh
+#
+
+gcp_project=replicate-gke-demo
+compute_zone=us-central1-a
+cluster_name=repldemo-cluster
+
+export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+

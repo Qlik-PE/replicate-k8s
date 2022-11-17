@@ -46,7 +46,8 @@ spec:
       args: [ ]
   restartPolicy: Never
   # in real life, the data volume should at a minimum be persistent storage or you will
-  # lose your work when the pod exits. Ideally it would be on a shared disk (i.e. nfs, etc.)
+  # lose your work when the pod exits. Ideally it would be on a shared disk 
+  # (i.e. cloud block storage, etc.)
   # so that it can be accessed from whatever node replicate is deployed on.
   volumes:
     - name: repldata
