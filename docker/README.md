@@ -1,91 +1,707 @@
-# Building a Docker Image for Qlik Replicate
+![](images.README/media/image1.png){width="9.427835739282589in"
+height="10.34162510936133in"}
 
-The files in this directory show an approach to building a docker image for
-Qlik Replicate. 
+Qlik Replicate Running on Docker
 
-> Another approach can be found as a download bundle in
-> the Qlik Data Integration download area. The file name will be something like: 
-> *areplicate-2022.5.0-499_docker_file_generator.tar.gz*.
+Pedro Bergo -- PS Team
 
-In order to build a docker image, you will need to download the Linux install bundle for Qlik
-Replicate and extract it. For example:
+November 22, 2023
 
-```
-[docker]$ tar xzvf areplicate-2022.5.0-499.x86_64.tar.gz 
-areplicate-2022.5.0-499.x86_64.rpm
-[docker]$ 
-```
-and then execute the *docker_build.sh* script with the name and location of the extracted RPM file.
-```text
-[docker]$ ./docker_build.sh areplicate-2022.5.0-499.x86_64.rpm
-Sending build context to Docker daemon  333.3MB
-Step 1/26 : FROM centos:7
- ---> eeb6ee3f44bd
-Step 2/26 : ARG user=attunity
- ---> Running in 163e91f2cbf9
-Removing intermediate container 163e91f2cbf9
- ---> f986da4fb365
-Step 3/26 : ARG group=attunity
- ---> Running in b6a626be1d1f
-Removing intermediate container b6a626be1d1f
- ---> 991c39d19d18
-Step 4/26 : ARG passwd=AttunityAdmin123
- ---> Running in dbee866f3011
-Removing intermediate container dbee866f3011
- ---> 43972b008a67
-...
-...
-...
-**** INSTALLING REPLICATE ****
-Loaded plugins: fastestmirror, ovl
-Examining /tmp/replicate.rpm: areplicate-2022.5.0-499.x86_64
-Marking /tmp/replicate.rpm to be installed
-Resolving Dependencies
---> Running transaction check
----> Package areplicate.x86_64 0:2022.5.0-499 will be installed
---> Finished Dependency Resolution
+# Contents {#contents .TOC-Heading}
 
-Dependencies Resolved
+[Introduction [2](#introduction)](#introduction)
 
-================================================================================
- Package           Arch          Version                Repository         Size
-================================================================================
-Installing:
- areplicate        x86_64        2022.5.0-499           /replicate        424 M
+[Document history [3](#document-history)](#document-history)
 
-Transaction Summary
-================================================================================
-Install  1 Package
+[Premises [4](#premises)](#premises)
 
-Total size: 424 M
-Installed size: 424 M
-...
-...
-...
-Step 24/26 : EXPOSE 3552
- ---> Running in db875271d859
-Removing intermediate container db875271d859
- ---> 66186935beb3
-Step 25/26 : EXPOSE 3550
- ---> Running in 82ef0e8569c1
-Removing intermediate container 82ef0e8569c1
- ---> cccc75aa26f7
-Step 26/26 : CMD /home/attunity/bin/start-replicate.sh && bash
- ---> Running in 3307bac17668
-Removing intermediate container 3307bac17668
- ---> 1334e42b722e
-Successfully built 1334e42b722e
-Successfully tagged replicate:k8s
-[docker]$ 
+[Steps to install Qlik Replicate on Docker
+[5](#steps-to-install-qlik-replicate-on-docker)](#steps-to-install-qlik-replicate-on-docker)
 
-```
-> Note: The script *repldrivers.sh* is used during the `docker build` process. It updates the 
-> base image operating system and installs ODBC drivers for MySQL, PostgreSQL, 
-> SQL Server, Snowflake, and Databricks. Depending on your requirements, you might decide
-> not to install all of these, or install others.
+[Install Docker [6](#install-docker)](#install-docker)
 
-> Note: The script *start-replicate.sh* is copied into and used by 
-> the docker image that is generated. It installs SSL certs and/or the Replicate 
-> license if they are provided at runtime, and starts the Qlik Replicate server.
-> You should review this script for details: it looks in specific locations for the 
-> SSL certs and Qlik Replicate license.
+[Download files [7](#download-files)](#download-files)
+
+[ODBC drivers [7](#odbc-drivers)](#odbc-drivers)
+
+[Qlik Replicate installation files
+[7](#qlik-replicate-installation-files)](#qlik-replicate-installation-files)
+
+[Qlik Replicate Dockerfile Generator
+[7](#qlik-replicate-dockerfile-generator)](#qlik-replicate-dockerfile-generator)
+
+[Adjusting the scripts
+[9](#adjusting-the-scripts)](#adjusting-the-scripts)
+
+[Create shared (or persistent) data folder
+[9](#create-shared-or-persistent-data-folder)](#create-shared-or-persistent-data-folder)
+
+[Convert license to JSON file
+[9](#convert-license-to-json-file)](#convert-license-to-json-file)
+
+[Comment drivers [9](#comment-drivers)](#comment-drivers)
+
+[Generate the Dockerfile
+[10](#generate-the-dockerfile)](#generate-the-dockerfile)
+
+[Changing Dockerfile [10](#changing-dockerfile)](#changing-dockerfile)
+
+[Build Docker Image [12](#build-docker-image)](#build-docker-image)
+
+[Run Qlik Replicate on Docker
+[13](#run-qlik-replicate-on-docker)](#run-qlik-replicate-on-docker)
+
+[Docker command examples
+[14](#docker-command-examples)](#docker-command-examples)
+
+[Upgrading Qlik Replicate on Docker
+[15](#upgrading-qlik-replicate-on-docker)](#upgrading-qlik-replicate-on-docker)
+
+[Upgrading [15](#upgrading)](#upgrading)
+
+[Rollback [15](#rollback)](#rollback)
+
+# Introduction
+
+This document was created to provide details about using Qlik Replicate
+inside Docker environment. The information here doesn´t intend to cover
+all aspects of Docker environments, flavours and tools provided by
+market, like Swarm, Kubernettes or AWS-EKS.
+
+The recommended approach for PS consultants during the project
+implementation is provide to customers basic information and artifacts
+(scripts and configuration files) to work with Docker, then it can be
+adapted to its own environments.
+
+# Document history
+
+  -----------------------------------------------------------------------
+  Version        Date                       Details        Author
+  -------------- -------------------------- -------------- --------------
+  1.0            October, 7 2022            Initial        Pedro Bergo
+
+  2.0            November, 22 2023          Adjusted       Pedro Bergo
+
+                                                           
+
+                                                           
+
+                                                           
+  -----------------------------------------------------------------------
+
+# Premises
+
+Following the premises to install Qlik Replicate using Docker:
+
+1.  Linux Host machine, on my tests I use following OS
+
+    a.  Ubuntu 20.04
+
+    b.  RedHat 8
+
+    c.  CentOS 7.5
+
+    d.  Windows Server 2019
+
+2.  Persistent Storage: Qlik Replicate will store the data on a
+    persistent storage, shared through the network and mounted inside
+    Docker Container. As Replicate needs, this storage must be physical
+    storage, like physical disk, EBS volume or Azure disks.
+
+3.  Fixed IP address and Port to reach out the Replicate container by
+    users or QEM.
+
+4.  The example on this document uses MySQL and MS SQL Server ODBC
+    driver and Qlik Replicate May 2023 version.
+
+> ![Diagram Description automatically
+> generated](images.README/media/image2.png){width="6.1586384514435695in"
+> height="3.9031364829396327in"}
+
+# Steps to install Qlik Replicate on Docker
+
+1)  Install Docker
+
+2)  Download files
+
+    a.  ODBC drivers
+
+    b.  Qlik Replicate Linux installer
+
+    c.  Qlik Replicate Dockerfile Generator
+
+3)  Adjust the scripts
+
+4)  Build Docker Image
+
+5)  Run Qlik Replicate on Docker
+
+# Install Docker
+
+This section provides information to prepare machine to run Docker.
+Following script example works on CentOS 7.5
+
+Tip:
+
+-   You can use many different Linux distributions since the Docker
+    image use specific versions of it.
+
+#Update SO
+
+sudo yum -y update
+
+#Install packages
+
+sudo yum -y install openssh-server openssh-clients
+
+sudo yum install -y yum-utils
+
+sudo yum -y install epel-release
+
+#Enable extra repository
+
+sudo yum repolist
+
+#Remove old Docker installations
+
+sudo yum remove docker docker-client docker-client-latest docker-common
+docker-latest docker-latest-logrotate docker-logrotate docker-engine
+
+#Add docker repo
+
+sudo yum-config-manager \--add-repo
+<https://download.docker.com/linux/centos/docker-ce.repo>
+
+#Install docker-engine Community Edition
+
+sudo yum -y install docker-ce docker-ce-cli containerd.io
+docker-compose-plugin
+
+#Start docker
+
+sudo systemctl start docker
+
+#Make it auto initate
+
+sudo systemctl enable docker
+
+#Install Docker-compose
+
+sudo curl -L
+\"https://github.com/docker/compose/releases/download/v2.9.0/docker-compose-\$(uname
+-s)-\$(uname -m)\" -o /usr/local/bin/docker-compose
+
+sudo chmod +x /usr/local/bin/docker-compose
+
+sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+# Download files
+
+### ODBC drivers
+
+The ODBC drivers must be available to build the Docker image. Main
+drivers are on the RPM format, but image is like a VM, so the drivers
+can be downloaded directly into the image, without download previously,
+however I´m suggest download it manually, avoiding any problem like
+certificate or hashing verify during image provisioning, crashing the
+pipeline.
+
+Following scripts will download some of popular odbc drivers.
+
+#Download MSSQL ODBC Driver
+
+wget
+https://packages.microsoft.com/rhel/8/prod/Packages/m/msodbcsql18-18.2.2.1-1.x86_64.rpm
+
+wget
+https://packages.microsoft.com/rhel/8/prod/Packages/m/mssql-tools18-18.2.1.1-1.x86_64.rpm
+
+#Download MYSQL ODBC Driver
+
+wget
+https://repo.mysql.com/yum/mysql-8.0-community/el/8/x86_64/mysql-community-common-8.0.25-1.el8.x86_64.rpm
+
+wget
+https://repo.mysql.com/yum/mysql-connectors-community/el/8/x86_64/mysql-connector-odbc-8.0.25-1.el8.x86_64.rpm
+
+#Download Oracle
+
+wget
+https://yum.oracle.com/repo/OracleLinux/OL8/oracle/instantclient/x86_64/getPackage/oracle-instantclient19.14-odbc-19.14.0.0.0-1.x86_64.rpm
+
+wget
+https://yum.oracle.com/repo/OracleLinux/OL8/oracle/instantclient/x86_64/getPackage/oracle-instantclient19.14-sqlplus-19.14.0.0.0-1.x86_64.rpm
+
+wget
+https://yum.oracle.com/repo/OracleLinux/OL8/oracle/instantclient/x86_64/getPackage/oracle-instantclient19.14-basic-19.14.0.0.0-1.x86_64.rpm
+
+### Qlik Replicate installation files
+
+The Qlik Replicate installation file must be available to build the
+Docker image. It must be on the RPM format, but image is like a VM, so
+the drivers can be downloaded directly into the image, without download
+previously, however I´m suggest download it manually, avoiding any
+problem like certificate or hashing verify during image provisioning,
+crashing the pipeline.
+
+Following scripts will download Qlik Replicate installation files.
+
+#Download Qlik Replicate installation file
+
+wget
+https://github.com/qlik-download/replicate/releases/download/v2023.5.1/areplicate-2023.5.0-322.x86_64.tar.gz
+
+#Unzip
+
+tar xvf areplicate-2023.5.0-322.x86_64.tar.gz
+
+#Cleanup downloaded file
+
+rm areplicate-2023.5.0-322.x86_64.tar.gz
+
+### Qlik Replicate Dockerfile Generator
+
+Qlik provides some scripts to generate the Dockerfile.
+
+Dockerfile is used to build the Docker image and contains commands which
+will install the files downloaded inside image.
+
+Following scripts will download Qlik Replicate Dockerfile Generator.
+
+#Download Qlik Replicate Dockerfile Generator
+
+wget
+https://github.com/qlik-download/replicate/releases/download/v2023.5.1/areplicate-2023.5.0-322_docker_file_generator.tar.gz
+
+#Unzip
+
+tar xvf areplicate-2023.5.0-322_docker_file_generator.tar.gz
+
+#Cleanup downloaded file
+
+rm areplicate-2023.5.0-322_docker_file_generator.tar.gz
+
+The files unzipped fare:
+
+-   README: Information
+
+-   create-dockerfile.sh: Scripts to generate the Dockerfile
+
+-   db2client.rsp: Response file to install db2
+
+-   oracleclient.rsp: Response file to install oracle
+
+-   drivers: File containing the name of Drivers which will be installed
+
+-   start_replicate.sh: Script which starts the Replicate service inside
+    the Docker Container.
+
+-   run_docker.sh: Script used to start the Docker Container.
+
+# Adjusting the scripts
+
+The Qlik Replicate scripts can be adapted to customer needs, like:
+
+-   Adding another driver
+
+-   Correct driver versions
+
+-   Point to data folder
+
+-   Change the Replicate Port
+
+-   Install certificate
+
+Tips:
+
+-   Change create-dockerfile.sh only if you plan to generate Dockerfile
+    many times with different types of configurations.
+
+-   You can change the Dockerfile directly before build the image
+
+-   Remember to configure the port on create-dockerfile.sh
+
+-   Remember to configure the data folder on create-dockerfile and
+    run_docker.sh
+
+-   Remember to create replicate data folder on network
+
+### Create shared (or persistent) data folder
+
+#Create persistent storage
+
+sudo mkdir -p /replicate/qre-docker/data
+
+### Convert license to JSON file
+
+To automate Replicate licensing, you may convert the license to JSON
+format. If you don´t want to automate it you may need to import license
+information on first start of Replicate.
+
+The following PERL script was developed to convert it
+
+cat \> make_jsonlicense.pl
+
+\$comma = q();              # Will become a comma
+
+for (\<\>) {
+
+    next if /\^\\s\*#/;       \# Comment?
+
+    if (/license_type=/) { \# Looks like a license file?}
+
+        \$license=1;
+
+        print qq({\\n\\t\"cmd.license\":\\t{);  # Open up the JSON
+structure
+
+    }
+
+    next unless \$license and /=/;
+
+    chomp;                 \# Remove New-line
+
+    s/=/\":\"/;
+
+    print qq(\${comma}\\n\\t\\t\"\${\_}\");
+
+    \$comma = q(,);         \# Now it must become real
+
+}
+
+print qq(\\n\\t}\\n}\\n);      # And close the JSON structure
+
+\^C
+
+After creating the script, download the license and execute following
+command, changing the \<*replicate_license.txt\>* to license file name.
+
+perl make_jsonlicense.pl \<*replicate_license.txt\>* \| perl -p -e
+\'s/\\r//g\' \> license.json
+
+### Comment drivers
+
+For this document, you may comment all drivers reference on drivers
+file, adding a '#' character before each line.
+
+drivers
+
+![A screen shot of a computer Description automatically
+generated](images.README/media/image3.png){width="5.208784995625547in"
+height="0.941748687664042in"}
+
+### Generate the Dockerfile
+
+#Generate the Dockerfile
+
+sh ./create-dockerfile.sh
+
+### Changing Dockerfile
+
+#### Change Linux OS image
+
+Since CentOS 7/8 and RHEL 7 are no longer supported, you may change the
+OS version from line 1 of Dockerfile which contains "FROM centos:7" to
+following as desired:
+
+-   Red Hat Enteprise 8:
+
+FROM registry.access.redhat.com/ubi8/ubi:8.1
+
+-   Need to disable every subscription plugin manager in every yum
+    statement:
+
+\--disableplugin=subscription-manager
+
+-   ORACLE LINUX 8:
+
+FROM oraclelinux:8
+
+#### Change Qlik Replicate installation binary
+
+Change the lines that contains "areplicate-\*.rpm" to version that you
+wanna to.
+
+ADD areplicate-2023.5.0-322.x86_64.rpm /tmp/
+
+RUN yum -y install /tmp/areplicate-2023.5.0-322.x86_64.rpm
+
+#### Add driver ODBC installation procedures
+
+Following statements will install some example of ODBC drivers
+
+MySQL
+
+ADD mysql-\*.rpm /tmp/
+
+RUN yum install -y /tmp/mysql-community-common-8.0.25-1.el8.x86_64.rpm
+
+RUN yum install -y /tmp/mysql-connector-odbc-8.0.25-1.el8.x86_64.rpm
+
+RUN rm -f /tmp/mysql\*.rpm
+
+RUN echo \"\[MySQL\]\" \>\> /etc/odbcinst.ini
+
+RUN echo \"Description = ODBC for MySQL\" \>\> /etc/odbcinst.ini
+
+RUN echo \"Driver = /usr/lib/libmyodbc8.so\" \>\> /etc/odbcinst.ini
+
+RUN echo \"Setup = /usr/lib/libodbcmyS.so\" \>\> /etc/odbcinst.ini
+
+RUN echo \"Driver64 = /usr/lib64/libmyodbc8.so\" \>\> /etc/odbcinst.ini
+
+RUN echo \"Setup64 = /usr/lib64/libodbcmyS.so\" \>\> /etc/odbcinst.ini
+
+RUN echo \"FileUsage = 1\" \>\> /etc/odbcinst.ini
+
+Oracle
+
+#For main Linux version
+
+ADD oracle\*rpm /tmp/
+
+RUN yum -y install
+/tmp/oracle-instantclient19.14-basic-19.14.0.0.0-1.x86_64.rpm
+
+RUN yum -y install
+/tmp/oracle-instantclient19.14-sqlplus-19.14.0.0.0-1.x86_64.rpm
+
+RUN yum -y install
+/tmp/oracle-instantclient19.14-odbc-19.14.0.0.0-1.x86_64.rpm
+
+RUN rm -f oracle\*.rpm
+
+ENV PATH=/usr/lib/oracle/19.14/client64/bin:\$PATH
+
+ENV LD_LIBRARY_PATH=/usr/lib/oracle/19.14/client64/lib:\$LD_LIBRARY_PATH
+
+\-- or \--
+
+\# For RHEL8 / OL8 Linux versions
+
+ADD oracle\*rpm /tmp/
+
+RUN yum -y install
+/tmp/oracle-instantclient-basic-21.5.0.0.0-1.x86_64.rpm
+
+RUN yum -y install
+/tmp/oracle-instantclient-sqlplus-21.5.0.0.0-1.x86_64.rpm
+
+RUN yum -y install
+/tmp/oracle-instantclient-odbc-21.5.0.0.0-1.x86_64.rpm
+
+RUN rm -f oracle\*.rpm
+
+MS SQL Server
+
+ADD ms\*rpm /tmp/
+
+RUN ACCEPT_EULA=Y yum -y install /tmp/msodbcsql18-18.2.2.1-1.x86_64.rpm
+
+RUN ACCEPT_EULA=Y yum -y install
+/tmp/mssql-tools18-18.2.1.1-1.x86_64.rpm
+
+ENV PATH=\$PATH:/opt/mssql-tools/bin
+
+ENV LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/microsoft/msodbcsql/lib64
+
+#### Change run_docker.sh
+
+Adjust run_docker.sh to persist data out of docker container
+
+#!/bin/bash
+
+\# Expect three parameters:
+
+\# 1. Rest port
+
+\# 2. Docker image
+
+\# 3. Replicate password
+
+if \[ -z \$1 \] \|\| \[ -z \$2 \] \|\| \[ -z \$3 \]; then
+
+echo \"Usage: run_docker.sh \<Rest port\> \<Docker image\> \<Replicate
+password\>\"
+
+exit 1
+
+fi
+
+docker run -d -e ReplicateRestPort=\$1 -e ReplicateAdminPassword=\$3 -p
+\$1:\$1 \--expose \$1 **\--mount
+type=bind,source=/replicate/qre-docker/data,target=/replicate/data** \$2
+
+# Build Docker Image
+
+After adjusting the scripts and generate the Dockerfile, you may build
+the Docker Image.
+
+Following scripts will build the image.
+
+#Build the Docker image
+
+\# qre-docker is the name of image, you can change it for any another
+name.
+
+sudo docker build -t qre-docker:v202305 ./
+
+#Check the Docker image created
+
+sudo docker image ls
+
+# Run Qlik Replicate on Docker
+
+Run Docker means that Docker will read the built image and launch a
+Container. Replicate will start automatically using ENTRYPOINT statement
+(check Dockerfile to see it).
+
+The run_docker.sh script needs next parameters:
+
+1)  Port for access Replicate
+
+2)  Image name, used on Build Docker Image step
+
+3)  Replicate Password, it will follow the '*repctl SETSERVERPASSWORD*'
+    instructions. The first time will create a password, and after that,
+    need to be same.
+
+To run Docker, and starts Qlik Replicate, just execute the
+run_docker.sh:
+
+#Run docker
+
+sudo sh ./run_docker.sh 3552 qre-docker:v202305 QlikReplicate2023
+
+Docker installation use bridged connection as default, so the Container
+IP address is the same from Linux Host. Once that, the port used by
+Replicate must be opened on Linux Host.
+
+# Docker command examples
+
+Following scripts will check, stop, remove, and clean
+
+#Stop docker and Qlik Replicate
+
+#First list docker container running
+
+sudo docker container ls
+
+#Use the CONTAINER ID to stop the container
+
+sudo docker container stop \<containerID\>
+
+#delete a container
+
+sudo docker container rm \<containerID\>
+
+sudo docker container prune
+
+#log into container to execute any command then check replicate running
+
+sudo docker container exec -it \<containerID\> ps -ef
+
+#list images
+
+sudo docker images
+
+#delete image
+
+sudo docker image rm qre-docker:v202305
+
+sudo docker image prune
+
+#start again a stopped container
+
+sudo docker container start \<containerID\>
+
+#check the container top running process
+
+sudo docker container top \<containerID\>
+
+#check memory and cpu usage from one container
+
+sudo docker container stats \<containerID\>
+
+#execute commands inside container
+
+sudo docker container exec -it \<containerID\> "command"
+
+# Upgrading Qlik Replicate on Docker
+
+Following the script to perform upgrading Qlik Replicate running on a
+container Docker from version 2023.05 to 2023.11.
+
+### Upgrading
+
+1.  Download installation files from Qlik repository and ODBC drivers
+
+wget
+https://github.com/qlik-download/replicate/releases/download/v2023.11.0/QlikReplicate_2023_11_0\_Linux_X64.tar.gz
+
+tar xvf QlikReplicate_2023_11_0\_Linux_X64.tar.gz
+
+2.  Upload files to tmp folder inside container
+
+sudo docker cp ./areplicate-2023.11.0-159.x86_64.rpm
+\<containerID\>:/tmp/
+
+3.  Stop Replicate services
+
+sudo docker container exec -it \<containerID\> su attunity -c
+\"/opt/attunity/replicate/bin/repctl.sh -d /replicate/data service
+stop\"
+
+4.  Copy data folder
+
+sudo mkdir -p /replicate/qre-bkp
+
+sudo cp -r /replicate/qre-docker /replicate/qre-bkp
+
+5.  Perform the upgrade
+
+sudo docker container exec -it \<containerID\> su -c \"runservice=false
+verbose=true yum -y upgrade /tmp/areplicate-2023.11.0-159.x86_64.rpm\"
+
+sudo docker container exec -it \<containerID\> su -c \"rm
+/tmp/areplicate-\*.rpm\"
+
+6.  Start Replicate Services
+
+sudo docker container exec -it \<containerID\> su attunity -c
+\"/opt/attunity/replicate/bin/repctl.sh -d /replicate/data service
+start\"
+
+7.  Generate image from Replicate
+
+Tips:
+
+-   You can generate same image or create a new one.
+-   Only refresh existing image if your new version runs without any error
+
+\# creating new image from running Docker
+
+sudo docker container commit \<containerID\> qre-docker:v202311
+
+### Rollback
+
+If you got any error during execution of step 6 or cannot access the new
+version, you can roll back to early version following the steps:
+
+1\. Stop and remove running container
+
+\# stopping and removing
+
+sudo docker container stop \<containerID\>
+
+suto docker container prune
+
+2\. Run earlier version
+
+#Run docker
+
+sudo sh ./run_docker.sh 3552 qre-docker QlikReplicate2023
+
+![](images.README/media/image4.png){width="2.3229166666666665in"
+height="0.28958333333333336in"}![](images.README/media/image5.png){width="8.5in"
+height="11.0in"}

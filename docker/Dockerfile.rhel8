@@ -1,0 +1,45 @@
+FROM registry.access.redhat.com/ubi8/ubi:8.1
+
+#install prequisits
+RUN yum install -y --disableplugin=subscription-manager unixODBC unzip
+RUN rm -f /etc/odbcinst.ini
+
+ADD areplicate-2023.5.0-322.x86_64.rpm /tmp/
+RUN yum -y --disableplugin=subscription-manager install /tmp/areplicate-2023.5.0-322.x86_64.rpm
+RUN yum clean all
+RUN rm -f /tmp/areplicate-*.rpm
+
+ENV ReplicateDataFolder /replicate/data
+ENV ReplicateAdminPassword ""
+ENV ReplicateRestPort 3554
+ADD start_replicate.sh /opt/attunity/replicate/bin/start_replicate.sh
+RUN chmod 775 /opt/attunity/replicate/bin/start_replicate.sh
+ADD license.json /
+ENTRYPOINT /opt/attunity/replicate/bin/start_replicate.sh ${ReplicateDataFolder} ${ReplicateAdminPassword} ${ReplicateRestPort} license.json ; tail -f /dev/null
+ADD mysql-*.rpm /tmp/
+RUN yum --disableplugin=subscription-manager install -y /tmp/mysql-community-common-8.0.25-1.el8.x86_64.rpm 
+RUN yum --disableplugin=subscription-manager install -y /tmp/mysql-connector-odbc-8.0.25-1.el8.x86_64.rpm
+RUN rm -f /tmp/mysql*.rpm
+RUN echo "[MySQL]" >> /etc/odbcinst.ini
+RUN echo "Description     = ODBC for MySQL" >> /etc/odbcinst.ini
+RUN echo "Driver          = /usr/lib/libmyodbc8.so" >> /etc/odbcinst.ini
+RUN echo "Setup           = /usr/lib/libodbcmyS.so" >> /etc/odbcinst.ini
+RUN echo "Driver64        = /usr/lib64/libmyodbc8.so" >> /etc/odbcinst.ini
+RUN echo "Setup64         = /usr/lib64/libodbcmyS.so" >> /etc/odbcinst.ini
+RUN echo "FileUsage       = 1" >> /etc/odbcinst.ini
+
+ADD oracle*rpm /tmp/
+RUN yum -y install /tmp/oracle-instantclient-basic-21.5.0.0.0-1.x86_64.rpm
+RUN yum -y install /tmp/oracle-instantclient-sqlplus-21.5.0.0.0-1.x86_64.rpm
+RUN yum -y install /tmp/oracle-instantclient-odbc-21.5.0.0.0-1.x86_64.rpm
+RUN rm -f /tmp/oracle*.rpm
+ENV PATH=/usr/lib/oracle/21/client64/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH
+
+ADD ms*rpm /tmp/
+RUN ACCEPT_EULA=Y yum --disableplugin=subscription-manager -y install /tmp/msodbcsql18-18.2.2.1-1.x86_64.rpm
+RUN ACCEPT_EULA=Y yum --disableplugin=subscription-manager -y install /tmp/mssql-tools18-18.2.1.1-1.x86_64.rpm
+ENV PATH=$PATH:/opt/mssql-tools/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/microsoft/msodbcsql/lib64
+
+
