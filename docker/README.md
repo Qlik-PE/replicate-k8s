@@ -12,19 +12,19 @@ November, 2023
 
 [Steps to install Qlik Replicate on Docker](#steps)
 
-[Install Docker](#install-docker)
+[Step 1 - Install Docker](#install-docker)
 
-[Download files](#download-files)
+[Step 2 - Download files](#download-files)
 
-[Adjusting the scripts](#adjust-scripts)
+[Step 3 - Adjusting the scripts](#adjust-scripts)
 
-[Build Docker Image](#build-image)
+[Step 4 - Build Docker Image](#build-image)
 
-[Run Qlik Replicate on Docker](#run-replicate)
+[Step 5 - Run Qlik Replicate on Docker](#run-replicate)
 
-[Docker command examples](#docker-reference)
+[Step 6 - Managing Replicate Docker container with examples](#docker-reference)
 
-[Upgrading Qlik Replicate on Docker](#upgrading)
+[Extra - Upgrading Qlik Replicate on Docker](#upgrading)
 
 <a id="introduction"></a>
 ## Introduction
@@ -46,7 +46,8 @@ Following the premises to install Qlik Replicate using Docker:
 
     c.  CentOS 7.5
 
-    d.  Windows Server 2019
+    Tip: You can use any other one that supports Replicate OS platforms.
+    https://help.qlik.com/en-US/replicate/May2023/Content/Replicate/Main/Support%20Matrix/supported_win_platforms.htm#Supporte
 
 2.  Persistent Storage: Qlik Replicate will store the data on a persistent storage, shared through the network and mounted inside Docker Container. As Replicate needs, this storage must be physical storage, like physical disk, EBS volume or Azure disks.
 
@@ -394,6 +395,7 @@ Following scripts will build the image.
 ```shell
 #Build the Docker image
 # qre-docker is the name of image, you can change it for any another name.
+#sudo docker build -t <imagetag> <Dockerfile_folder>
 sudo docker build -t qre-docker:v202305 ./
 ```
 ```shell
@@ -417,6 +419,7 @@ The run_docker.sh script needs next parameters:
 To run Docker, and starts Qlik Replicate, just execute the run_docker.sh:
 ```shell
 #Run docker
+#sudo sh ./run_docker.sh <port> <imagetag> <ServerPassword>
 sudo sh ./run_docker.sh 3552 qre-docker:v202305 QlikReplicate2023
 ```
 
@@ -428,28 +431,35 @@ Docker installation uses bridged connection as default, so the Container IP addr
 Following scripts will check, stop, remove, and clean
 
 ```shell
-#First list docker container running
+#List docker container running
 sudo docker container ls
 
-#Use the CONTAINER ID to stop the container
+#List all docker containers (running and stopped)
+sudo docker container ls -a
+
+#Stop a container
 sudo docker container stop <containerID>
+
+#start again a stopped container 
+sudo docker container start <containerID>
+
+#restarting a container 
+sudo docker container restart <containerID>
 
 #delete a container
 sudo docker container rm <containerID>
 sudo docker container prune
 
-#log into container to execute any command then check replicate running
+#Check if replicate service is running inside a container
 sudo docker container exec -it <containerID> ps -ef
 
 #list images
 sudo docker images
 
-#delete image
+#delete images
+#sudo docker image rm <imagetag> 
 sudo docker image rm qre-docker:v202305
 sudo docker image prune
-
-#start again a stopped container 
-sudo docker container start <containerID>
 
 #check the container top running process 
 sudo docker container top <containerID>
@@ -458,7 +468,14 @@ sudo docker container top <containerID>
 sudo docker container stats <containerID>
 
 #execute commands inside container
-sudo docker container exec -it <containerID> “command”
+#sudo docker container exec -it <containerID> su -c "command"
+sudo docker container exec -it <containerID> su -c "ls -l /replicate/data/logs"
+
+#open interactive shell session inside container
+sudo docker container exec -it <containerID> bash
+
+
+
 ```
 
 <a id="upgrading"></a>
