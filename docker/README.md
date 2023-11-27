@@ -1,5 +1,4 @@
-![](images.README/media/image1.png){width="9.427835739282589in"
-height="10.34162510936133in"}
+![](images_docker/media/image1.png){width="9.427835739282589in" height="10.34162510936133in"}
 
 Qlik Replicate Running on Docker
 
@@ -115,7 +114,7 @@ Following the premises to install Qlik Replicate using Docker:
     driver and Qlik Replicate May 2023 version.
 
 > ![Diagram Description automatically
-> generated](images.README/media/image2.png){width="6.1586384514435695in"
+> generated](images_docker/media/image2.png){width="6.1586384514435695in"
 > height="3.9031364829396327in"}
 
 # Steps to install Qlik Replicate on Docker
@@ -387,7 +386,7 @@ file, adding a '#' character before each line.
 drivers
 
 ![A screen shot of a computer Description automatically
-generated](images.README/media/image3.png){width="5.208784995625547in"
+generated](images_docker/media/image3.png){width="5.208784995625547in"
 height="0.941748687664042in"}
 
 ### Generate the Dockerfile
@@ -702,6 +701,6 @@ suto docker container prune
 
 sudo sh ./run_docker.sh 3552 qre-docker QlikReplicate2023
 
-![](images.README/media/image4.png){width="2.3229166666666665in"
-height="0.28958333333333336in"}![](images.README/media/image5.png){width="8.5in"
+![](images_docker/media/image4.png){width="2.3229166666666665in"
+height="0.28958333333333336in"}![](images_docker/media/image5.png){width="8.5in"
 height="11.0in"}
