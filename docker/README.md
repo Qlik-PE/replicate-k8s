@@ -420,7 +420,7 @@ To run Docker, and starts Qlik Replicate, just execute the run_docker.sh:
 sudo sh ./run_docker.sh 3552 qre-docker:v202305 QlikReplicate2023
 ```
 
-Docker installation use bridged connection as default, so the Container IP address is the same from Linux Host. Once that, the port used by Replicate must be opened on Linux Host.
+Docker installation uses bridged connection as default, so the Container IP address is the same from Linux Host. Once that, the port used by Replicate must be opened on Linux Host.
 
 <a id="docker-reference"></a>
 # Docker command reference examples
