@@ -2,7 +2,7 @@
 
 This repository has been deprecated.
 
-You may go to new repository https://github/pbergo/replicate-docker .
+You may go to new repository [https://github.com/pbergo/replicate-docker](https://github.com/pbergo/replicate-docker).
 
 
 
